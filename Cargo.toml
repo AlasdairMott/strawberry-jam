@@ -17,3 +17,4 @@ opt-level = 3
 
 [dependencies]
 bevy = "0.14"
+bevy_panorbit_camera = "0.19.1"
