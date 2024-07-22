@@ -5,6 +5,7 @@
 #![allow(clippy::too_many_arguments, clippy::type_complexity, dead_code)]
 
 mod fps;
+mod world;
 
 use std::f32::consts::PI;
 
@@ -14,6 +15,7 @@ use bevy::{asset::AssetMetaCheck, pbr::CascadeShadowConfigBuilder};
 use bevy_panorbit_camera::{PanOrbitCamera, PanOrbitCameraPlugin};
 use bevy_rapier3d::prelude::*;
 use fps::FpsPlugin;
+use world::WorldPlugin;
 
 const BG_COLOR: Color = Color::srgb(0.2, 0.76, 1.0);
 
@@ -28,6 +30,7 @@ fn main() {
         }))
         .add_plugins(RapierPhysicsPlugin::<NoUserData>::default())
         .add_plugins(FpsPlugin)
+        .add_plugins(WorldPlugin)
         // .add_plugins(PanOrbitCameraPlugin)
         .insert_resource(ClearColor(BG_COLOR))
         .add_systems(Startup, (setup_sun, spawn_water))
