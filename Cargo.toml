@@ -2,7 +2,7 @@
 name = "bevy_github_ci_template"
 version = "0.1.0"
 edition = "2021"
-license = "MIT OR Apache-2.0 OR CC0-1.0"
+license = "CC0-1.0"
 
 # Compile with Performance Optimizations:
 # https://bevyengine.org/learn/book/getting-started/setup/#compile-with-performance-optimizations
@@ -16,7 +16,12 @@ opt-level = 1
 opt-level = 3
 
 [dependencies]
-bevy = "0.14"
+bevy = { version = "0.14", features = ["file_watcher"] } # "dynamic_linking"
 bevy_fps_controller = "0.3.0"
 bevy_panorbit_camera = "0.19.1"
-bevy_rapier3d = { version = "0.27.0", features = ["wasm-bindgen"] }
+bevy_rapier3d = { version = "0.27.0", features = ["wasm-bindgen", "debug-render-3d"] }
+bevy_common_assets = { version = "0.11.0", features = ["json"]}
+serde = { version = "1" }
+rand = "0.8.5"
+
+

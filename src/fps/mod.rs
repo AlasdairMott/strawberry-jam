@@ -26,7 +26,7 @@ fn setup(mut commands: Commands, mut window: Query<&mut Window>) {
     // The other is a "render" player that is what is displayed to the user
     // This distinction is useful for later on if you want to add multiplayer,
     // where often time these two ideas are not exactly synced up
-    let height = 3.0;
+    let height = 2.0;
     let logical_entity = commands
         .spawn((
             Collider::cylinder(height / 2.0, 0.5),
@@ -73,16 +73,12 @@ fn setup(mut commands: Commands, mut window: Query<&mut Window>) {
                 fov: TAU / 5.0,
                 ..default()
             }),
-            exposure: Exposure::SUNLIGHT,
-
+            exposure: Exposure::INDOOR,
             ..default()
         },
         FogSettings {
             color: BG_COLOR,
-            falloff: FogFalloff::Linear {
-                start: 15.0,
-                end: 50.0,
-            },
+            falloff: FogFalloff::Exponential { density: 0.00 },
             ..default()
         },
         RenderPlayer { logical_entity },

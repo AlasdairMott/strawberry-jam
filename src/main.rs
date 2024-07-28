@@ -2,19 +2,27 @@
 // about code quality. They are sometimes hard to avoid though, and the CI
 // workflow treats them as errors, so this allows them throughout the project.
 // Feel free to delete this line.
-#![allow(clippy::too_many_arguments, clippy::type_complexity, dead_code)]
+#![allow(
+    clippy::too_many_arguments,
+    clippy::type_complexity,
+    dead_code,
+    // unused_imports
+)]
 
 mod fps;
+mod water;
 mod world;
 
 use std::f32::consts::PI;
 
-use bevy::pbr::NotShadowReceiver;
 use bevy::prelude::*;
+use bevy::transform::commands;
 use bevy::{asset::AssetMetaCheck, pbr::CascadeShadowConfigBuilder};
 use bevy_panorbit_camera::{PanOrbitCamera, PanOrbitCameraPlugin};
 use bevy_rapier3d::prelude::*;
 use fps::FpsPlugin;
+use water::WaterPlugin;
+use world::markov::BlockInstanceCollider;
 use world::WorldPlugin;
 
 const BG_COLOR: Color = Color::srgb(0.2, 0.76, 1.0);
@@ -29,12 +37,19 @@ fn main() {
             ..default()
         }))
         .add_plugins(RapierPhysicsPlugin::<NoUserData>::default())
+        // .add_plugins(RapierDebugRenderPlugin::default())
         .add_plugins(FpsPlugin)
         .add_plugins(WorldPlugin)
+        // .add_plugins(WaterPlugin)
         // .add_plugins(PanOrbitCameraPlugin)
         .insert_resource(ClearColor(BG_COLOR))
-        .add_systems(Startup, (setup_sun, spawn_water))
-        .add_systems(Update, simulate_tides)
+        .add_systems(Startup, setup_sun)
+        // .add_systems(Startup, setup_pan_camera)
+        .add_systems(
+            Update,
+            on_enter_turn_fixed_rigid_bodies_into_static_rigid_bodies,
+        )
+        // .add_systems(Update, rotate_sun)
         .run();
 }
 
@@ -44,45 +59,64 @@ fn setup_pan_camera(mut commands: Commands) {
             transform: Transform::from_translation(Vec3::new(0.0, 1.5, 5.0)),
             ..default()
         },
-        PanOrbitCamera::default(),
-        FogSettings {
-            color: BG_COLOR,
-            falloff: FogFalloff::Linear {
-                start: 5.0,
-                end: 20.0,
-            },
+        PanOrbitCamera {
+            button_pan: MouseButton::Left,
+            modifier_pan: Some(KeyCode::ShiftLeft),
             ..default()
         },
     ));
 }
 
-#[derive(Resource)]
-pub struct MainScene {
-    handle: Handle<Gltf>,
-    is_loaded: bool,
-}
+// derive sun component
+#[derive(Component)]
+pub struct Sun;
 
 fn setup_sun(mut commands: Commands) {
     // directional 'sun' light
-    commands.spawn(DirectionalLightBundle {
-        directional_light: DirectionalLight {
-            illuminance: light_consts::lux::FULL_DAYLIGHT,
-            shadows_enabled: true,
+    commands.spawn((
+        DirectionalLightBundle {
+            directional_light: DirectionalLight {
+                illuminance: light_consts::lux::OVERCAST_DAY,
+                shadows_enabled: true,
+                ..default()
+            },
+            transform: Transform {
+                translation: Vec3::new(0.0, 2.0, 0.0),
+                rotation: Quat::from_rotation_x(-PI / 4.),
+                ..default()
+            },
+            cascade_shadow_config: CascadeShadowConfigBuilder {
+                first_cascade_far_bound: 4.0,
+                maximum_distance: 200.0,
+                ..default()
+            }
+            .into(),
             ..default()
         },
-        transform: Transform {
-            translation: Vec3::new(0.0, 2.0, 0.0),
-            rotation: Quat::from_rotation_x(-PI / 4.),
-            ..default()
-        },
-        cascade_shadow_config: CascadeShadowConfigBuilder {
-            first_cascade_far_bound: 4.0,
-            maximum_distance: 20.0,
-            ..default()
-        }
-        .into(),
-        ..default()
-    });
+        Sun,
+    ));
+}
+
+fn rotate_sun(
+    time: Res<Time>,
+    mut sun_transform: Query<&mut Transform, With<Sun>>,
+    mut sun_light: Query<&mut DirectionalLight, With<Sun>>,
+) {
+    for mut transform in sun_transform.iter_mut() {
+        transform.rotation = Quat::from_rotation_y(time.elapsed_seconds() as f32);
+    }
+
+    for mut light in sun_light.iter_mut() {
+        // light.illuminance =
+
+        //     // sin(time.seconds_since_startup() as f32).abs() * light_consts::lux::FULL_DAYLIGHT;
+
+        // use bevy math sin wave
+        let sin_wave = (time.elapsed_seconds_wrapped() as f32).sin();
+        light.illuminance = (sin_wave * 0.5 + 0.5) * light_consts::lux::FULL_DAYLIGHT;
+    }
+
+    // the sun strength should be based on the time of day
 }
 
 fn spawn_gltf(mut commands: Commands, ass: Res<AssetServer>) {
@@ -98,42 +132,27 @@ fn spawn_gltf(mut commands: Commands, ass: Res<AssetServer>) {
     });
 }
 
-#[derive(Component)]
-pub struct Water;
-
-fn spawn_water(
+fn on_enter_turn_fixed_rigid_bodies_into_static_rigid_bodies(
     mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    rigid_body_query: Query<(Entity, &RigidBody), With<BlockInstanceCollider>>,
 ) {
-    let water_material = materials.add(StandardMaterial {
-        base_color: Color::srgb(0.0, 0.5, 0.7),
-        reflectance: 0.3,
-        ..Default::default()
-    });
+    let rigid_body: Option<RigidBody>;
 
-    let mesh_size = 200.0;
-    commands.spawn((
-        PbrBundle {
-            mesh: meshes.add(
-                Plane3d::default()
-                    .mesh()
-                    .size(mesh_size, mesh_size)
-                    .subdivisions(1),
-            ),
-            material: water_material,
-            ..default()
-        },
-        NotShadowReceiver,
-        Water,
-    ));
-}
+    if keyboard_input.just_pressed(KeyCode::KeyP) {
+        rigid_body = Some(RigidBody::Dynamic);
+    } else if keyboard_input.just_pressed(KeyCode::KeyO) {
+        rigid_body = Some(RigidBody::Fixed);
+    } else {
+        return;
+    }
 
-fn simulate_tides(time: Res<Time>, mut query: Query<&mut Transform, With<Water>>) {
-    let wave_speed = 0.4;
-    let wave_height = 2.0;
+    for (entity, body) in rigid_body_query.iter() {
+        if *body != rigid_body.unwrap() {
+            // println!("rigid body is fixed");
 
-    for mut transform in query.iter_mut() {
-        transform.translation.y = (time.elapsed_seconds() as f32 * wave_speed).sin() * wave_height;
+            commands.entity(entity).remove::<RigidBody>();
+            commands.entity(entity).insert(rigid_body.unwrap());
+        }
     }
 }
