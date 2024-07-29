@@ -21,6 +21,7 @@ fn spawn_water(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
+    //https://github.com/Neopallium/bevy_water?tab=readme-ov-file
     let water_material = materials.add(StandardMaterial {
         base_color: Color::srgb(0.0, 0.2, 0.4),
         reflectance: 0.3,
@@ -49,8 +50,8 @@ fn spawn_water(
 
 fn simulate_tides(time: Res<Time>, mut query: Query<&mut Transform, With<Water>>) {
     let wave_speed = 0.2;
-    let wave_height = 16.0;
-    let offset = 18.0;
+    let wave_height = 10.0;
+    let offset = 10.0;
 
     for mut transform in query.iter_mut() {
         transform.translation.y =
@@ -108,7 +109,7 @@ fn update_underwater_fog(
                     (water_level - player_transform.translation.y) / 10.0,
                 }
             } else {
-                fog_settings.falloff = FogFalloff::Exponential { density: 0.0 }
+                fog_settings.falloff = FogFalloff::Exponential { density: 0.001 }
             }
         }
     }

@@ -16,7 +16,6 @@ mod world;
 use std::f32::consts::PI;
 
 use bevy::prelude::*;
-use bevy::transform::commands;
 use bevy::{asset::AssetMetaCheck, pbr::CascadeShadowConfigBuilder};
 use bevy_panorbit_camera::{PanOrbitCamera, PanOrbitCameraPlugin};
 use bevy_rapier3d::prelude::*;
@@ -25,7 +24,8 @@ use water::WaterPlugin;
 use world::markov::BlockInstanceCollider;
 use world::WorldPlugin;
 
-const BG_COLOR: Color = Color::srgb(0.2, 0.76, 1.0);
+const BG_COLOR: Color = Color::WHITE;
+const BG_VALUE: f32 = 0.75;
 
 fn main() {
     App::new()
@@ -42,13 +42,13 @@ fn main() {
         .add_plugins(WorldPlugin)
         // .add_plugins(WaterPlugin)
         // .add_plugins(PanOrbitCameraPlugin)
-        .insert_resource(ClearColor(BG_COLOR))
+        .insert_resource(ClearColor(Color::srgb(BG_VALUE, BG_VALUE, BG_VALUE)))
         .add_systems(Startup, setup_sun)
         // .add_systems(Startup, setup_pan_camera)
-        .add_systems(
-            Update,
-            on_enter_turn_fixed_rigid_bodies_into_static_rigid_bodies,
-        )
+        // .add_systems(
+        //     Update,
+        //     on_enter_turn_fixed_rigid_bodies_into_static_rigid_bodies,
+        // )
         // .add_systems(Update, rotate_sun)
         .run();
 }

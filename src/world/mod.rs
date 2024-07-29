@@ -49,7 +49,7 @@ fn setup_ground(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     let ground_size = 500.0;
-    let ground_transform = Transform::from_xyz(0.0, -0.5, 0.0);
+    let ground_transform = Transform::from_xyz(0.0, -0.1, 0.0);
     commands.spawn((
         ground_transform.clone(), // Position the ground slightly below the origin
         GlobalTransform::IDENTITY,
@@ -93,12 +93,7 @@ fn scene_colliders(
         commands.spawn(SceneBundle { scene, ..default() });
         for node in &gltf.nodes {
             let node = gltf_node_assets.get(node).unwrap();
-            let bundles = spawn_collider_from_gltf_node(
-                node,
-                &gltf_mesh_assets,
-                &mesh_assets,
-                Transform::from_xyz(0.0, 0.0, 0.0),
-            );
+            let bundles = spawn_collider_from_gltf_node(node, &gltf_mesh_assets, &mesh_assets);
             for bundle in bundles {
                 commands.spawn(bundle);
             }
@@ -107,34 +102,19 @@ fn scene_colliders(
     }
 }
 
-#[derive(Bundle)]
-pub struct ColliderBundle {
-    collider: Collider,
-    // transform_bundle: TransformBundle,
-}
-
 pub fn spawn_collider_from_gltf_node(
     gltf_node: &GltfNode,
     gltf_mesh_assets: &Assets<GltfMesh>,
     mesh_assets: &Assets<Mesh>,
-    transform: Transform,
-) -> Vec<ColliderBundle> {
-    let mut bundles: Vec<ColliderBundle> = Vec::new();
-
-    // instead build a compund shape here https://rapier.rs/docs/user_guides/bevy_plugin/colliders#compound-shapes
-    // or attach all as children?
-
+) -> Vec<Collider> {
+    let mut bundles: Vec<Collider> = Vec::new();
     if let Some(gltf_mesh) = gltf_node.mesh.clone() {
         let gltf_mesh = gltf_mesh_assets.get(&gltf_mesh).unwrap();
         for mesh_primitive in gltf_mesh.primitives.iter() {
             let mesh = mesh_assets.get(&mesh_primitive.mesh).unwrap();
 
-            bundles.push(ColliderBundle {
-                collider: Collider::from_bevy_mesh(mesh, &ComputedColliderShape::TriMesh).unwrap(),
-                // transform_bundle: TransformBundle::from_transform(gltf_node.transform * transform),
-            });
+            bundles.push(Collider::from_bevy_mesh(mesh, &ComputedColliderShape::TriMesh).unwrap());
         }
     }
-
     bundles
 }
